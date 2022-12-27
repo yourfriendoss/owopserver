@@ -139,6 +139,10 @@ export class Server {
       }
     })
     this.createApiHandlers(server)
+    server.any("/*", (res, req) => {
+      res.writeStatus("400 Bad Request")
+      res.end()
+    })
     server.listen(parseInt(process.env.WS_PORT), listenSocket => {
       this.listenSocket = listenSocket
     })
