@@ -1,4 +1,7 @@
 import uWS from "uWebSockets.js"
+import path from 'path';
+import { serveDir } from 'uwebsocket-serve';
+import { fileURLToPath } from 'url';
 import { ServerClientManager } from "../client/ServerClientManager.js"
 import { ServerIpManager } from "../ip/ServerIpManager.js"
 import { ServerWorldManager } from "../world/ServerWorldManager.js"
@@ -11,9 +14,13 @@ import { getIpFromHeader } from "../util/util.js"
 let textEncoder = new TextEncoder()
 let textDecoder = new TextDecoder()
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 export class Server {
   constructor(config) {
     this.config = config
+
+    this.serveStatic = serveDir(path.resolve(__dirname, '../../static'));
 
     this.clients = new ServerClientManager(this)
     this.ips = new ServerIpManager(this)
@@ -33,7 +40,7 @@ export class Server {
 
     this.whitelistId = miscData.whitelistId
     this.lockdown = false
-    
+
     this.destroyed = false
   }
 
@@ -62,7 +69,9 @@ export class Server {
     } else {
       server = uWS.App()
     }
-    server.ws("/*", {
+
+    server.get('/*', this.serveStatic);
+    server.ws("/", {
       maxPayloadLength: 1 << 15,
       maxBackpressure: 2 << 21,
       idleTimeout: 60,
@@ -130,10 +139,6 @@ export class Server {
       }
     })
     this.createApiHandlers(server)
-    server.any("/*", (res, req) => {
-      res.writeStatus("400 Bad Request")
-      res.end()
-    })
     server.listen(parseInt(process.env.WS_PORT), listenSocket => {
       this.listenSocket = listenSocket
     })
